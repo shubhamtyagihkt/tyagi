@@ -22,7 +22,8 @@ type SKU struct {
 
 type Purchase struct {
 	ID                uint           `json:"id" gorm:"primaryKey"`
-	SKUID             string         `json:"sku_id" gorm:"not null;index"`
+	SKUID             string         `json:"sku_id" gorm:"column:sku_id;not null;index"`
+	LegacySKUID       string         `json:"-" gorm:"column:sk_uid"`
 	Qty               int            `json:"qty" gorm:"not null"`
 	PurchasePrice     float64        `json:"purchase_price" gorm:"not null"`
 	ExpectedSalePrice *float64       `json:"expected_sale_price,omitempty"`
@@ -35,15 +36,16 @@ type Purchase struct {
 }
 
 type Sale struct {
-	ID        uint           `json:"id" gorm:"primaryKey"`
-	SKUID     string         `json:"sku_id" gorm:"not null;index"`
-	Qty       int            `json:"qty" gorm:"not null"`
-	SalePrice float64        `json:"sale_price" gorm:"not null"`
-	Customer  string         `json:"customer" gorm:"not null;default:''"`
-	Date      time.Time      `json:"date" gorm:"not null;index"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	ID          uint           `json:"id" gorm:"primaryKey"`
+	SKUID       string         `json:"sku_id" gorm:"column:sku_id;not null;index"`
+	LegacySKUID string         `json:"-" gorm:"column:sk_uid"`
+	Qty         int            `json:"qty" gorm:"not null"`
+	SalePrice   float64        `json:"sale_price" gorm:"not null"`
+	Customer    string         `json:"customer" gorm:"not null;default:''"`
+	Date        time.Time      `json:"date" gorm:"not null;index"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `json:"-" gorm:"index"`
 }
 
 type Expense struct {
@@ -55,4 +57,38 @@ type Expense struct {
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+func (p *Purchase) BeforeCreate(tx *gorm.DB) error {
+	p.LegacySKUID = p.SKUID
+	return nil
+}
+
+func (p *Purchase) BeforeUpdate(tx *gorm.DB) error {
+	p.LegacySKUID = p.SKUID
+	return nil
+}
+
+func (p *Purchase) AfterFind(tx *gorm.DB) error {
+	if p.SKUID == "" {
+		p.SKUID = p.LegacySKUID
+	}
+	return nil
+}
+
+func (s *Sale) BeforeCreate(tx *gorm.DB) error {
+	s.LegacySKUID = s.SKUID
+	return nil
+}
+
+func (s *Sale) BeforeUpdate(tx *gorm.DB) error {
+	s.LegacySKUID = s.SKUID
+	return nil
+}
+
+func (s *Sale) AfterFind(tx *gorm.DB) error {
+	if s.SKUID == "" {
+		s.SKUID = s.LegacySKUID
+	}
+	return nil
 }
