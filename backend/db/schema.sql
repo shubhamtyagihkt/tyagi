@@ -1,0 +1,53 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS skus (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    subcategory TEXT NOT NULL,
+    brand TEXT NOT NULL,
+    compatibility TEXT NOT NULL DEFAULT '',
+    unit TEXT NOT NULL,
+    expected_sale_price REAL NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sku_id TEXT NOT NULL,
+    qty INTEGER NOT NULL,
+    purchase_price REAL NOT NULL,
+    expected_sale_price REAL,
+    vendor TEXT NOT NULL DEFAULT '',
+    invoice_number TEXT NOT NULL DEFAULT '',
+    date DATETIME NOT NULL,
+    deleted_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sku_id) REFERENCES skus(id)
+);
+
+CREATE TABLE IF NOT EXISTS sales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sku_id TEXT NOT NULL,
+    qty INTEGER NOT NULL,
+    sale_price REAL NOT NULL,
+    customer TEXT NOT NULL DEFAULT '',
+    date DATETIME NOT NULL,
+    deleted_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sku_id) REFERENCES skus(id)
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    amount REAL NOT NULL,
+    notes TEXT NOT NULL DEFAULT '',
+    date DATETIME NOT NULL,
+    deleted_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
