@@ -4,8 +4,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
 
 	appdb "autoparts-app/backend/db"
 
@@ -21,37 +19,55 @@ func NewDatabaseHandler(database *gorm.DB) *DatabaseHandler {
 	return &DatabaseHandler{DB: database}
 }
 
+type SelectDatabaseRequest struct {
+	Path string `json:"path" binding:"required"`
+}
+
 func (h *DatabaseHandler) Select(c *gin.Context) {
-	file, err := c.FormFile("database")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "database file is required"})
+	var req SelectDatabaseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path is required"})
 		return
 	}
 
-	ext := strings.ToLower(filepath.Ext(file.Filename))
+	normalizedPath, err := appdb.NormalizePath(req.Path)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate file extension
+	ext := filepath.Ext(normalizedPath)
 	if ext != ".db" && ext != ".sqlite" && ext != ".sqlite3" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "select a .db, .sqlite, or .sqlite3 file"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "path must end with .db, .sqlite, or .sqlite3"})
 		return
 	}
 
-	if err := os.MkdirAll("databases", 0755); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if info, err := os.Stat(normalizedPath); err != nil {
+		if os.IsNotExist(err) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "database file does not exist"})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "could not access database file: " + err.Error()})
+		return
+	} else if info.IsDir() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "database path cannot be a directory"})
 		return
 	}
 
-	name := strings.TrimSuffix(filepath.Base(file.Filename), filepath.Ext(file.Filename))
-	name = strings.NewReplacer(" ", "_", "/", "_", "\\", "_").Replace(name)
-	target := filepath.Join("databases", name+"-"+time.Now().Format("20060102150405")+ext)
-
-	if err := c.SaveUploadedFile(file, target); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	nextDB, err := appdb.ConnectPath(target)
+	// Try to connect to the database at the given path
+	nextDB, err := appdb.ConnectPath(normalizedPath)
 	if err != nil {
-		_ = os.Remove(target)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "could not open selected SQLite database: " + err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "could not open database at path: " + err.Error()})
+		return
+	}
+
+	// Save the normalized path to config
+	if err := appdb.SetDatabasePath(normalizedPath); err != nil {
+		if oldSQL, cerr := nextDB.DB(); cerr == nil && oldSQL != nil {
+			_ = oldSQL.Close()
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save database path: " + err.Error()})
 		return
 	}
 
@@ -63,6 +79,6 @@ func (h *DatabaseHandler) Select(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "database selected",
-		"path":    target,
+		"path":    normalizedPath,
 	})
 }

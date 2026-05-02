@@ -9,7 +9,12 @@ import (
 )
 
 func main() {
-	database, err := db.Connect()
+	dbPath, err := db.GetDatabasePath()
+	if err != nil {
+		log.Fatalf("failed to get database path: %v", err)
+	}
+
+	database, err := db.ConnectPath(dbPath)
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
 	}
