@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { todayString } from '../lib/date'
 
-const initialForm = {
-  title: 'Investment',
-  amount: '',
-  notes: '',
-  date: new Date().toLocaleDateString('en-CA'),
+function initialForm() {
+  return {
+    title: 'Investment',
+    amount: '',
+    notes: '',
+    date: todayString(),
+  }
 }
 
 function formatMoney(value) {
@@ -68,7 +71,7 @@ function FinancePage() {
         ...form,
         amount: Number(form.amount),
       })
-      setForm(initialForm)
+      setForm(initialForm())
       await loadFinance()
     } catch (err) {
       setError(err.message)

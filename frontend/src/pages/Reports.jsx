@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api'
 import DateFilter from '../components/DateFilter'
+import { todayString } from '../lib/date'
 
 function formatDate(date) {
   return date.toLocaleDateString('en-CA')
@@ -26,7 +27,7 @@ function getPresetRange(preset) {
 }
 
 function ReportsPage() {
-  const [filters, setFilters] = useState({ dateFrom: '', dateTo: '' })
+  const [filters, setFilters] = useState({ dateFrom: todayString(), dateTo: todayString() })
   const [report, setReport] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -52,57 +53,69 @@ function ReportsPage() {
 
   return (
     <section className="page">
-      <h2>P&amp;L Reports</h2>
-
-      <DateFilter
-        value={filters}
-        onChange={setFilters}
-        onApply={() => loadReport(filters)}
-        onReset={() => {
-          const next = { dateFrom: '', dateTo: '' }
-          setFilters(next)
-          loadReport(next)
-        }}
-      />
-
-      <div className="quick-filters">
-        <button type="button" className="secondary" onClick={() => applyPreset('today')}>
-          Today
-        </button>
-        <button type="button" className="secondary" onClick={() => applyPreset('week')}>
-          This Week
-        </button>
-        <button type="button" className="secondary" onClick={() => applyPreset('month')}>
-          This Month
+      <div className="page-heading">
+        <div>
+          <h2>P&amp;L Reports</h2>
+          <p>Review sales, purchase cost, expenses, and net profit by period.</p>
+        </div>
+        <button type="button" onClick={() => loadReport(filters)}>
+          Generate Report
         </button>
       </div>
 
-      <button type="button" onClick={() => loadReport(filters)}>
-        Generate Report
-      </button>
+      <section className="report-panel">
+        <div className="report-panel-block">
+          <span className="panel-label">Quick range</span>
+          <div className="quick-filters">
+            <button type="button" className="secondary" onClick={() => applyPreset('today')}>
+              Today
+            </button>
+            <button type="button" className="secondary" onClick={() => applyPreset('week')}>
+              This Week
+            </button>
+            <button type="button" className="secondary" onClick={() => applyPreset('month')}>
+              This Month
+            </button>
+          </div>
+        </div>
+
+        <div className="report-panel-block custom-range">
+          <span className="panel-label">Custom range</span>
+          <DateFilter
+            value={filters}
+            onChange={setFilters}
+            onApply={() => loadReport(filters)}
+            onReset={() => {
+              const next = { dateFrom: todayString(), dateTo: todayString() }
+              setFilters(next)
+              loadReport(next)
+            }}
+          />
+        </div>
+      </section>
 
       {loading && <p>Loading report...</p>}
       {error && <p className="error">{error}</p>}
 
       {report && (
-        <div className="cards">
-          <article className="card">
+        <div className="report-grid">
+          <article className="metric-card">
             <p>Total Sales Revenue</p>
             <h3>{report.total_sales_revenue?.toFixed(2)}</h3>
           </article>
-          <article className="card">
+          <article className="metric-card">
             <p>Total Purchase Cost</p>
             <h3>{report.total_purchase_cost?.toFixed(2)}</h3>
           </article>
-          <article className="card">
+          <article className="metric-card">
             <p>Gross Profit</p>
             <h3>{report.gross_profit?.toFixed(2)}</h3>
           </article>
-          <article className="card">
+          <article className="metric-card">
             <p>Total Expenses</p>
             <h3>{report.total_expenses?.toFixed(2)}</h3>
           </article>
-          <article className="card">
+          <article className="metric-card emphasis">
             <p>Net Profit</p>
             <h3>{report.net_profit?.toFixed(2)}</h3>
           </article>

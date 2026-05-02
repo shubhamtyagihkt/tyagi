@@ -206,10 +206,14 @@ func (h *FinanceHandler) recentTransactions() ([]financeTransactionResponse, err
 		return nil, err
 	}
 	for _, row := range sales {
+		title := "Sale " + row.SKUID
+		if row.SaleType == "service" {
+			title = "Service " + row.ServiceName
+		}
 		transactions = append(transactions, financeTransactionResponse{
 			ID:     row.ID,
 			Type:   "input",
-			Title:  "Sale " + row.SKUID,
+			Title:  title,
 			Amount: float64(row.Qty) * row.SalePrice,
 			Date:   row.Date.Format("2006-01-02"),
 			Notes:  row.Customer,

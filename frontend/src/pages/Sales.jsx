@@ -3,16 +3,21 @@ import { api } from '../lib/api'
 import SKUSearch from '../components/SKUSearch'
 import DateFilter from '../components/DateFilter'
 import EntryTable from '../components/EntryTable'
+import { todayString } from '../lib/date'
 
 const initialEstimateLine = {
+  sale_type: 'item',
   sku_id: '',
+  service_name: '',
   qty: '',
   sale_price: '',
 }
 
-const initialEstimate = {
-  customer: '',
-  date: '',
+function initialEstimate() {
+  return {
+    customer: '',
+    date: todayString(),
+  }
 }
 
 function escapeHtml(value) {
@@ -31,9 +36,10 @@ function SalesPage() {
   const [estimateLine, setEstimateLine] = useState(initialEstimateLine)
   const [estimateLines, setEstimateLines] = useState([])
   const [error, setError] = useState('')
-  const [filters, setFilters] = useState({ dateFrom: '', dateTo: '' })
+  const [filters, setFilters] = useState({ dateFrom: todayString(), dateTo: todayString() })
   const skuById = useMemo(() => new Map(skus.map((sku) => [sku.id, sku])), [skus])
   const selectedEstimateSku = skuById.get(estimateLine.sku_id)
+  const isServiceLine = estimateLine.sale_type === 'service'
   const estimateTotal = estimateLines.reduce(
     (total, line) => total + Number(line.qty) * Number(line.sale_price),
     0,
@@ -55,7 +61,7 @@ function SalesPage() {
       try {
         const [skuData, saleData] = await Promise.all([
           api.sku.list(''),
-          api.sale.list({ dateFrom: '', dateTo: '' }),
+          api.sale.list({ dateFrom: todayString(), dateTo: todayString() }),
         ])
         if (ignore) return
         setSkus(skuData)
@@ -78,12 +84,16 @@ function SalesPage() {
     e.preventDefault()
     setError('')
 
-    if (!selectedEstimateSku) {
+    if (!isServiceLine && !selectedEstimateSku) {
       setError('Select a valid SKU for the estimate item.')
       return
     }
+    if (isServiceLine && !estimateLine.service_name.trim()) {
+      setError('Enter a service name for the estimate line.')
+      return
+    }
 
-    const qty = Number(estimateLine.qty)
+    const qty = isServiceLine ? Number(estimateLine.qty || 1) : Number(estimateLine.qty)
     const salePrice = Number(estimateLine.sale_price)
     if (!qty || qty <= 0 || !salePrice || salePrice <= 0) {
       setError('Estimate quantity and sale price must be greater than zero.')
@@ -94,8 +104,10 @@ function SalesPage() {
       ...estimateLines,
       {
         line_id: crypto.randomUUID(),
+        sale_type: estimateLine.sale_type,
         sku_id: estimateLine.sku_id,
-        item_name: selectedEstimateSku.name,
+        service_name: estimateLine.service_name.trim(),
+        item_name: isServiceLine ? estimateLine.service_name.trim() : selectedEstimateSku.name,
         qty,
         sale_price: salePrice,
       },
@@ -122,14 +134,16 @@ function SalesPage() {
     try {
       for (const line of estimateLines) {
         await api.sale.create({
+          sale_type: line.sale_type,
           sku_id: line.sku_id,
+          service_name: line.service_name,
           qty: line.qty,
           sale_price: line.sale_price,
           customer: estimate.customer,
           date: estimate.date,
         })
       }
-      setEstimate(initialEstimate)
+      setEstimate(initialEstimate())
       setEstimateLine(initialEstimateLine)
       setEstimateLines([])
       await loadSales()
@@ -151,7 +165,8 @@ function SalesPage() {
         (line, index) => `
           <tr>
             <td>${index + 1}</td>
-            <td>${escapeHtml(line.sku_id)}</td>
+            <td>${line.sale_type === 'service' ? 'Service' : 'Item'}</td>
+            <td>${escapeHtml(line.sale_type === 'service' ? '-' : line.sku_id)}</td>
             <td>${escapeHtml(line.item_name)}</td>
             <td>${line.qty}</td>
             <td>${line.sale_price.toFixed(2)}</td>
@@ -192,8 +207,9 @@ function SalesPage() {
             <thead>
               <tr>
                 <th>S. No.</th>
+                <th>Type</th>
                 <th>SKU ID</th>
-                <th>Item Name</th>
+                <th>Item / Service</th>
                 <th>Qty</th>
                 <th>Sale Price</th>
                 <th>Amount</th>
@@ -221,8 +237,13 @@ function SalesPage() {
 
   const columns = [
     { key: 'serial', title: 'S. No.', render: (row, index) => index + 1 },
-    { key: 'sku_id', title: 'SKU ID' },
-    { key: 'item_name', title: 'Item Name', render: (row) => skuById.get(row.sku_id)?.name || '-' },
+    { key: 'sale_type', title: 'Type', render: (row) => (row.sale_type === 'service' ? 'Service' : 'Item') },
+    { key: 'sku_id', title: 'SKU ID', render: (row) => (row.sale_type === 'service' ? '-' : row.sku_id) },
+    {
+      key: 'item_name',
+      title: 'Item / Service',
+      render: (row) => (row.sale_type === 'service' ? row.service_name : skuById.get(row.sku_id)?.name || '-'),
+    },
     { key: 'qty', title: 'Qty' },
     { key: 'sale_price', title: 'Sale Price' },
     { key: 'customer', title: 'Customer' },
@@ -248,20 +269,44 @@ function SalesPage() {
         </div>
 
         <form className="grid-form" onSubmit={addEstimateLine}>
+          <select
+            value={estimateLine.sale_type}
+            onChange={(e) =>
+              setEstimateLine({
+                ...initialEstimateLine,
+                sale_type: e.target.value,
+                qty: e.target.value === 'service' ? '1' : '',
+              })
+            }
+          >
+            <option value="item">Item</option>
+            <option value="service">Service</option>
+          </select>
           <div className="field-stack">
-            <SKUSearch
-              value={estimateLine.sku_id}
-              onChange={(value) => {
-                const nextSku = skuById.get(value)
-                setEstimateLine({
-                  ...estimateLine,
-                  sku_id: value,
-                  sale_price: nextSku?.expected_sale_price || estimateLine.sale_price,
-                })
-              }}
-              skus={skus}
-            />
-            <span className="field-note">{selectedEstimateSku?.name || 'Item name'}</span>
+            {isServiceLine ? (
+              <input
+                placeholder="Service Name"
+                value={estimateLine.service_name}
+                onChange={(e) => setEstimateLine({ ...estimateLine, service_name: e.target.value })}
+                required
+              />
+            ) : (
+              <SKUSearch
+                value={estimateLine.sku_id}
+                onChange={(value) => {
+                  const nextSku = skuById.get(value)
+                  setEstimateLine({
+                    ...estimateLine,
+                    sku_id: value,
+                    sale_price: nextSku?.expected_sale_price || estimateLine.sale_price,
+                  })
+                }}
+                skus={skus}
+              />
+            )}
+            <span className="field-note">
+              {isServiceLine ? 'Service revenue' : selectedEstimateSku?.name || 'Item name'}
+            </span>
           </div>
           <input
             type="number"
@@ -269,7 +314,7 @@ function SalesPage() {
             placeholder="Qty"
             value={estimateLine.qty}
             onChange={(e) => setEstimateLine({ ...estimateLine, qty: e.target.value })}
-            required
+            required={!isServiceLine}
           />
           <input
             type="number"
@@ -280,7 +325,7 @@ function SalesPage() {
             onChange={(e) => setEstimateLine({ ...estimateLine, sale_price: e.target.value })}
             required
           />
-          <button type="submit">Add Item</button>
+          <button type="submit">Add Line</button>
         </form>
 
         <div className="table-wrap">
@@ -288,8 +333,9 @@ function SalesPage() {
             <thead>
               <tr>
                 <th>S. No.</th>
+                <th>Type</th>
                 <th>SKU ID</th>
-                <th>Item Name</th>
+                <th>Item / Service</th>
                 <th>Qty</th>
                 <th>Sale Price</th>
                 <th>Amount</th>
@@ -299,7 +345,7 @@ function SalesPage() {
             <tbody>
               {estimateLines.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="empty">
+                  <td colSpan="8" className="empty">
                     No estimate items added.
                   </td>
                 </tr>
@@ -307,7 +353,8 @@ function SalesPage() {
                 estimateLines.map((line, index) => (
                   <tr key={line.line_id}>
                     <td>{index + 1}</td>
-                    <td>{line.sku_id}</td>
+                    <td>{line.sale_type === 'service' ? 'Service' : 'Item'}</td>
+                    <td>{line.sale_type === 'service' ? '-' : line.sku_id}</td>
                     <td>{line.item_name}</td>
                     <td>{line.qty}</td>
                     <td>{line.sale_price.toFixed(2)}</td>
@@ -335,16 +382,19 @@ function SalesPage() {
         </div>
       </section>
 
-      <DateFilter
-        value={filters}
-        onChange={setFilters}
-        onApply={() => loadSales(filters)}
-        onReset={() => {
-          const next = { dateFrom: '', dateTo: '' }
-          setFilters(next)
-          loadSales(next)
-        }}
-      />
+      <section className="recent-section">
+        <h3>Recent Sales</h3>
+        <DateFilter
+          value={filters}
+          onChange={setFilters}
+          onApply={() => loadSales(filters)}
+          onReset={() => {
+          const next = { dateFrom: todayString(), dateTo: todayString() }
+            setFilters(next)
+            loadSales(next)
+          }}
+        />
+      </section>
 
       {error && <p className="error">{error}</p>}
       <EntryTable columns={columns} rows={rows} onDelete={remove} deleteLabel="Soft Delete" />

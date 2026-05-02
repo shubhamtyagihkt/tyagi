@@ -3,15 +3,18 @@ import { api } from '../lib/api'
 import SKUSearch from '../components/SKUSearch'
 import DateFilter from '../components/DateFilter'
 import EntryTable from '../components/EntryTable'
+import { todayString } from '../lib/date'
 
-const initialForm = {
-  sku_id: '',
-  qty: '',
-  purchase_price: '',
-  expected_sale_price: '',
-  vendor: '',
-  invoice_number: '',
-  date: '',
+function initialForm() {
+  return {
+    sku_id: '',
+    qty: '',
+    purchase_price: '',
+    expected_sale_price: '',
+    vendor: '',
+    invoice_number: '',
+    date: todayString(),
+  }
 }
 
 function PurchasePage() {
@@ -19,7 +22,7 @@ function PurchasePage() {
   const [rows, setRows] = useState([])
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
-  const [filters, setFilters] = useState({ dateFrom: '', dateTo: '' })
+  const [filters, setFilters] = useState({ dateFrom: todayString(), dateTo: todayString() })
   const skuById = useMemo(() => new Map(skus.map((sku) => [sku.id, sku])), [skus])
   const selectedSku = skuById.get(form.sku_id)
 
@@ -39,7 +42,7 @@ function PurchasePage() {
       try {
         const [skuData, purchaseData] = await Promise.all([
           api.sku.list(''),
-          api.purchase.list({ dateFrom: '', dateTo: '' }),
+          api.purchase.list({ dateFrom: todayString(), dateTo: todayString() }),
         ])
         if (ignore) return
         setSkus(skuData)
@@ -68,7 +71,7 @@ function PurchasePage() {
         purchase_price: Number(form.purchase_price),
         expected_sale_price: form.expected_sale_price ? Number(form.expected_sale_price) : null,
       })
-      setForm(initialForm)
+      setForm(initialForm())
       await loadPurchases()
     } catch (err) {
       setError(err.message)
@@ -112,16 +115,19 @@ function PurchasePage() {
         <button type="submit">Add Purchase</button>
       </form>
 
-      <DateFilter
-        value={filters}
-        onChange={setFilters}
-        onApply={() => loadPurchases(filters)}
-        onReset={() => {
-          const next = { dateFrom: '', dateTo: '' }
-          setFilters(next)
-          loadPurchases(next)
-        }}
-      />
+      <section className="recent-section">
+        <h3>Recent Purchases</h3>
+        <DateFilter
+          value={filters}
+          onChange={setFilters}
+          onApply={() => loadPurchases(filters)}
+          onReset={() => {
+          const next = { dateFrom: todayString(), dateTo: todayString() }
+            setFilters(next)
+            loadPurchases(next)
+          }}
+        />
+      </section>
 
       {error && <p className="error">{error}</p>}
       <EntryTable columns={columns} rows={rows} onDelete={remove} deleteLabel="Soft Delete" />

@@ -2,19 +2,22 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import DateFilter from '../components/DateFilter'
 import EntryTable from '../components/EntryTable'
+import { todayString } from '../lib/date'
 
-const initialForm = {
-  title: '',
-  amount: '',
-  notes: '',
-  date: '',
+function initialForm() {
+  return {
+    title: '',
+    amount: '',
+    notes: '',
+    date: todayString(),
+  }
 }
 
 function ExpensesPage() {
   const [rows, setRows] = useState([])
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
-  const [filters, setFilters] = useState({ dateFrom: '', dateTo: '' })
+  const [filters, setFilters] = useState({ dateFrom: todayString(), dateTo: todayString() })
 
   async function loadExpenses(activeFilters = filters) {
     try {
@@ -26,7 +29,26 @@ function ExpensesPage() {
   }
 
   useEffect(() => {
-    loadExpenses()
+    let ignore = false
+
+    async function loadInitialExpenses() {
+      try {
+        const data = await api.expense.list({ dateFrom: todayString(), dateTo: todayString() })
+        if (!ignore) {
+          setRows(data)
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err.message)
+        }
+      }
+    }
+
+    loadInitialExpenses()
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   const submit = async (e) => {
@@ -37,7 +59,7 @@ function ExpensesPage() {
         ...form,
         amount: Number(form.amount),
       })
-      setForm(initialForm)
+      setForm(initialForm())
       await loadExpenses()
     } catch (err) {
       setError(err.message)
@@ -72,16 +94,19 @@ function ExpensesPage() {
         <button type="submit">Add Expense</button>
       </form>
 
-      <DateFilter
-        value={filters}
-        onChange={setFilters}
-        onApply={() => loadExpenses(filters)}
-        onReset={() => {
-          const next = { dateFrom: '', dateTo: '' }
-          setFilters(next)
-          loadExpenses(next)
-        }}
-      />
+      <section className="recent-section">
+        <h3>Recent Expenses</h3>
+        <DateFilter
+          value={filters}
+          onChange={setFilters}
+          onApply={() => loadExpenses(filters)}
+          onReset={() => {
+            const next = { dateFrom: todayString(), dateTo: todayString() }
+            setFilters(next)
+            loadExpenses(next)
+          }}
+        />
+      </section>
 
       {error && <p className="error">{error}</p>}
       <EntryTable columns={columns} rows={rows} onDelete={remove} deleteLabel="Soft Delete" />

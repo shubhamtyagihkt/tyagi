@@ -40,6 +40,8 @@ type Sale struct {
 	ID          uint           `json:"id" gorm:"primaryKey"`
 	SKUID       string         `json:"sku_id" gorm:"column:sku_id;not null;index"`
 	LegacySKUID string         `json:"-" gorm:"column:sk_uid"`
+	SaleType    string         `json:"sale_type" gorm:"not null;default:'item';index"`
+	ServiceName string         `json:"service_name" gorm:"not null;default:''"`
 	Qty         int            `json:"qty" gorm:"not null"`
 	SalePrice   float64        `json:"sale_price" gorm:"not null"`
 	Customer    string         `json:"customer" gorm:"not null;default:''"`

@@ -9,12 +9,66 @@ function salesTotal(rows) {
   return rows.reduce((sum, row) => sum + row.qty * row.sale_price, 0)
 }
 
+function categorySales(rows, skuById) {
+  const totals = new Map()
+
+  rows.forEach((row) => {
+    if (row.sale_type === 'service') {
+      totals.set('Service', (totals.get('Service') || 0) + row.qty * row.sale_price)
+      return
+    }
+
+    const sku = skuById.get(row.sku_id)
+    const category = sku?.category || 'Uncategorized'
+    totals.set(category, (totals.get(category) || 0) + row.qty * row.sale_price)
+  })
+
+  return [...totals.entries()]
+    .map(([category, total]) => ({ category, total }))
+    .sort((a, b) => b.total - a.total)
+}
+
+function CategorySalesChart({ title, total, rows }) {
+  const max = Math.max(...rows.map((row) => row.total), 0)
+
+  return (
+    <article className="chart-card">
+      <div className="chart-card-header">
+        <span>{title}</span>
+        <strong>{total.toFixed(2)}</strong>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="empty chart-empty">No sales in this period.</p>
+      ) : (
+        <div className="bar-chart">
+          {rows.map((row) => (
+            <div className="bar-row" key={row.category}>
+              <div className="bar-label">
+                <span>{row.category}</span>
+                <strong>{row.total.toFixed(2)}</strong>
+              </div>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ width: `${(row.total / max) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </article>
+  )
+}
+
 function Dashboard() {
   const [lowStockRows, setLowStockRows] = useState([])
   const [todaySales, setTodaySales] = useState(0)
   const [todayPurchases, setTodayPurchases] = useState(0)
   const [monthNetProfit, setMonthNetProfit] = useState(0)
-  const [salesTrend, setSalesTrend] = useState({ daily: 0, weekly: 0, monthly: 0 })
+  const [salesTrend, setSalesTrend] = useState({
+    daily: { total: 0, categories: [] },
+    weekly: { total: 0, categories: [] },
+    monthly: { total: 0, categories: [] },
+  })
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -45,10 +99,20 @@ function Dashboard() {
         setTodaySales(salesTotal(dailySales))
         setTodayPurchases(purchases.reduce((sum, row) => sum + row.qty * row.purchase_price, 0))
         setMonthNetProfit(report.net_profit || 0)
+        const skuById = new Map(skus.map((sku) => [sku.id, sku]))
         setSalesTrend({
-          daily: salesTotal(dailySales),
-          weekly: salesTotal(weeklySales),
-          monthly: salesTotal(monthlySales),
+          daily: {
+            total: salesTotal(dailySales),
+            categories: categorySales(dailySales, skuById),
+          },
+          weekly: {
+            total: salesTotal(weeklySales),
+            categories: categorySales(weeklySales, skuById),
+          },
+          monthly: {
+            total: salesTotal(monthlySales),
+            categories: categorySales(monthlySales, skuById),
+          },
         })
       } catch (err) {
         setError(err.message)
@@ -79,25 +143,34 @@ function Dashboard() {
       </div>
 
       <section className="dashboard-section">
-        <h3>Sales Trend</h3>
-        <div className="trend-grid">
-          <article className="trend-card">
-            <span>Daily</span>
-            <strong>{salesTrend.daily.toFixed(2)}</strong>
-          </article>
-          <article className="trend-card">
-            <span>Weekly</span>
-            <strong>{salesTrend.weekly.toFixed(2)}</strong>
-          </article>
-          <article className="trend-card">
-            <span>Monthly</span>
-            <strong>{salesTrend.monthly.toFixed(2)}</strong>
-          </article>
+        <div className="section-heading">
+          <h3>Sales Trend by Category</h3>
+          <span>Day, week, and month performance grouped by item category.</span>
+        </div>
+        <div className="chart-grid">
+          <CategorySalesChart
+            title="Today"
+            total={salesTrend.daily.total}
+            rows={salesTrend.daily.categories}
+          />
+          <CategorySalesChart
+            title="This Week"
+            total={salesTrend.weekly.total}
+            rows={salesTrend.weekly.categories}
+          />
+          <CategorySalesChart
+            title="This Month"
+            total={salesTrend.monthly.total}
+            rows={salesTrend.monthly.categories}
+          />
         </div>
       </section>
 
       <section className="dashboard-section">
-        <h3>Low Stock Alerts</h3>
+        <div className="section-heading">
+          <h3>Low Stock Alerts</h3>
+          <span>Items at or below their minimum stock threshold.</span>
+        </div>
         {lowStockRows.length === 0 ? (
           <p className="empty">No low stock alerts.</p>
         ) : (

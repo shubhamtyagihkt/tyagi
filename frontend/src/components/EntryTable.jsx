@@ -4,6 +4,15 @@ function formatValue(value) {
 }
 
 function EntryTable({ columns, rows, onDelete, deleteLabel = 'Delete' }) {
+  const confirmDelete = (row) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to ${deleteLabel.toLowerCase()} this record? This action will remove it from active records.`,
+    )
+    if (confirmed) {
+      onDelete(row.id)
+    }
+  }
+
   return (
     <div className="table-wrap">
       <table>
@@ -32,7 +41,7 @@ function EntryTable({ columns, rows, onDelete, deleteLabel = 'Delete' }) {
                 ))}
                 {onDelete && (
                   <td>
-                    <button type="button" className="danger" onClick={() => onDelete(row.id)}>
+                    <button type="button" className="danger" onClick={() => confirmDelete(row)}>
                       {deleteLabel}
                     </button>
                   </td>

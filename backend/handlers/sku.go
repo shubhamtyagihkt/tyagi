@@ -49,7 +49,7 @@ func NewSKUHandler(db *gorm.DB) *SKUHandler {
 func (h *SKUHandler) List(c *gin.Context) {
 	var skus []models.SKU
 
-	query := h.DB.Model(&models.SKU{})
+	query := h.DB.Model(&models.SKU{}).Where("id <> ?", serviceSaleSKUID)
 	search := strings.TrimSpace(c.Query("q"))
 	if search != "" {
 		like := "%" + strings.ToLower(search) + "%"

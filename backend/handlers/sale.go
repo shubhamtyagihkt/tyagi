@@ -15,12 +15,16 @@ type SaleHandler struct {
 	DB *gorm.DB
 }
 
+const serviceSaleSKUID = "__SERVICE__"
+
 type createSaleRequest struct {
-	SKUID     string  `json:"sku_id" binding:"required"`
-	Qty       int     `json:"qty" binding:"required,gt=0"`
-	SalePrice float64 `json:"sale_price" binding:"required,gt=0"`
-	Customer  string  `json:"customer"`
-	Date      string  `json:"date" binding:"required"`
+	SaleType    string  `json:"sale_type"`
+	SKUID       string  `json:"sku_id"`
+	ServiceName string  `json:"service_name"`
+	Qty         int     `json:"qty" binding:"required,gt=0"`
+	SalePrice   float64 `json:"sale_price" binding:"required,gt=0"`
+	Customer    string  `json:"customer"`
+	Date        string  `json:"date" binding:"required"`
 }
 
 func NewSaleHandler(db *gorm.DB) *SaleHandler {
@@ -66,27 +70,56 @@ func (h *SaleHandler) Create(c *gin.Context) {
 		return
 	}
 
-	var sku models.SKU
-	if err := h.DB.First(&sku, "id = ?", payload.SKUID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "sku not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	saleType := strings.TrimSpace(payload.SaleType)
+	if saleType == "" {
+		saleType = "item"
+	}
+	if saleType != "item" && saleType != "service" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sale_type must be item or service"})
 		return
 	}
 
-	availableStock, err := h.currentStock(payload.SKUID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if payload.Qty > availableStock {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":           "insufficient stock",
-			"available_stock": availableStock,
-		})
-		return
+	skuID := strings.TrimSpace(payload.SKUID)
+	serviceName := strings.TrimSpace(payload.ServiceName)
+
+	if saleType == "item" {
+		if skuID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "sku_id is required for item sales"})
+			return
+		}
+
+		var sku models.SKU
+		if err := h.DB.First(&sku, "id = ?", skuID).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "sku not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		availableStock, err := h.currentStock(skuID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		if payload.Qty > availableStock {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":           "insufficient stock",
+				"available_stock": availableStock,
+			})
+			return
+		}
+	} else {
+		if serviceName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "service_name is required for service sales"})
+			return
+		}
+		skuID = serviceSaleSKUID
+		if err := h.ensureServiceSKU(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	parsedDate, err := time.Parse("2006-01-02", payload.Date)
@@ -96,11 +129,13 @@ func (h *SaleHandler) Create(c *gin.Context) {
 	}
 
 	sale := models.Sale{
-		SKUID:     payload.SKUID,
-		Qty:       payload.Qty,
-		SalePrice: payload.SalePrice,
-		Customer:  payload.Customer,
-		Date:      parsedDate,
+		SaleType:    saleType,
+		SKUID:       skuID,
+		ServiceName: serviceName,
+		Qty:         payload.Qty,
+		SalePrice:   payload.SalePrice,
+		Customer:    payload.Customer,
+		Date:        parsedDate,
 	}
 
 	if err := h.DB.Create(&sale).Error; err != nil {
@@ -127,6 +162,21 @@ func (h *SaleHandler) SoftDelete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (h *SaleHandler) ensureServiceSKU() error {
+	serviceSKU := models.SKU{
+		ID:                serviceSaleSKUID,
+		Name:              "Service Revenue",
+		Category:          "Service",
+		Subcategory:       "Service",
+		Brand:             "Service",
+		Compatibility:     "",
+		Unit:              "service",
+		ExpectedSalePrice: 0,
+		MinStock:          0,
+	}
+	return h.DB.FirstOrCreate(&serviceSKU, models.SKU{ID: serviceSaleSKUID}).Error
+}
+
 func (h *SaleHandler) currentStock(skuID string) (int, error) {
 	var purchaseQty int64
 	if err := h.DB.Model(&models.Purchase{}).
@@ -139,6 +189,7 @@ func (h *SaleHandler) currentStock(skuID string) (int, error) {
 	var saleQty int64
 	if err := h.DB.Model(&models.Sale{}).
 		Where("sku_id = ?", skuID).
+		Where("(sale_type = ? OR sale_type = ?)", "", "item").
 		Select("COALESCE(SUM(qty), 0)").
 		Scan(&saleQty).Error; err != nil {
 		return 0, err

@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"autoparts-app/backend/models"
 
@@ -34,6 +35,12 @@ type skuSalesAgg struct {
 	TotalRevenue float64 `json:"total_revenue"`
 }
 
+type fifoPurchaseLayer struct {
+	SKUID     string
+	QtyLeft   int
+	UnitPrice float64
+}
+
 func NewReportsHandler(db *gorm.DB) *ReportsHandler {
 	return &ReportsHandler{DB: db}
 }
@@ -42,8 +49,8 @@ func (h *ReportsHandler) Summary(c *gin.Context) {
 	var (
 		fromFilter bool
 		toFilter   bool
-		from       interface{}
-		to         interface{}
+		from       time.Time
+		to         time.Time
 	)
 
 	dateFrom := strings.TrimSpace(c.Query("date_from"))
@@ -68,23 +75,16 @@ func (h *ReportsHandler) Summary(c *gin.Context) {
 		to = parsedTo
 	}
 
-	totalSalesRevenue, salesBySKU, err := h.salesData(fromFilter, from, toFilter, to)
+	totalSalesRevenue, _, err := h.salesData(fromFilter, from, toFilter, to)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	purchaseAvgBySKU, err := h.purchaseAverages(toFilter, to)
+	totalPurchaseCost, err := h.fifoPurchaseCost(fromFilter, from, toFilter, to)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	var totalPurchaseCost float64
-	for _, sale := range salesBySKU {
-		if avgCost, ok := purchaseAvgBySKU[sale.SKUID]; ok {
-			totalPurchaseCost += avgCost * float64(sale.TotalQty)
-		}
 	}
 
 	totalExpenses, err := h.totalExpenses(fromFilter, from, toFilter, to)
@@ -105,7 +105,7 @@ func (h *ReportsHandler) Summary(c *gin.Context) {
 	})
 }
 
-func (h *ReportsHandler) salesData(fromFilter bool, from interface{}, toFilter bool, to interface{}) (float64, []skuSalesAgg, error) {
+func (h *ReportsHandler) salesData(fromFilter bool, from time.Time, toFilter bool, to time.Time) (float64, []skuSalesAgg, error) {
 	query := h.DB.Model(&models.Sale{}).Select("sku_id, COALESCE(SUM(qty), 0) AS total_qty, COALESCE(SUM(qty * sale_price), 0) AS total_revenue")
 	if fromFilter {
 		query = query.Where("date >= ?", from)
@@ -128,29 +128,71 @@ func (h *ReportsHandler) salesData(fromFilter bool, from interface{}, toFilter b
 	return totalSalesRevenue, salesBySKU, nil
 }
 
-func (h *ReportsHandler) purchaseAverages(toFilter bool, to interface{}) (map[string]float64, error) {
-	query := h.DB.Model(&models.Purchase{}).Select("sku_id, COALESCE(SUM(qty), 0) AS total_qty, COALESCE(SUM(qty * purchase_price), 0) AS total_amount")
+func (h *ReportsHandler) fifoPurchaseCost(fromFilter bool, from time.Time, toFilter bool, to time.Time) (float64, error) {
+	purchaseQuery := h.DB.Model(&models.Purchase{})
 	if toFilter {
-		query = query.Where("date <= ?", to)
-	}
-	query = query.Group("sku_id")
-
-	var purchaseAgg []skuPurchaseAgg
-	if err := query.Scan(&purchaseAgg).Error; err != nil {
-		return nil, err
+		purchaseQuery = purchaseQuery.Where("date <= ?", to)
 	}
 
-	avg := make(map[string]float64, len(purchaseAgg))
-	for _, row := range purchaseAgg {
-		if row.TotalQty <= 0 {
-			continue
+	var purchases []models.Purchase
+	if err := purchaseQuery.Order("date asc, id asc").Find(&purchases).Error; err != nil {
+		return 0, err
+	}
+
+	layersBySKU := make(map[string][]fifoPurchaseLayer)
+	for _, purchase := range purchases {
+		layersBySKU[purchase.SKUID] = append(layersBySKU[purchase.SKUID], fifoPurchaseLayer{
+			SKUID:     purchase.SKUID,
+			QtyLeft:   purchase.Qty,
+			UnitPrice: purchase.PurchasePrice,
+		})
+	}
+
+	saleQuery := h.DB.Model(&models.Sale{}).Where("(sale_type = ? OR sale_type = ?)", "", "item")
+	if toFilter {
+		saleQuery = saleQuery.Where("date <= ?", to)
+	}
+
+	var sales []models.Sale
+	if err := saleQuery.Order("date asc, id asc").Find(&sales).Error; err != nil {
+		return 0, err
+	}
+
+	var totalCost float64
+	for _, sale := range sales {
+		countCost := true
+		if fromFilter && sale.Date.Before(from) {
+			countCost = false
 		}
-		avg[row.SKUID] = row.TotalAmount / float64(row.TotalQty)
+
+		remaining := sale.Qty
+		layers := layersBySKU[sale.SKUID]
+		for index := range layers {
+			if remaining <= 0 {
+				break
+			}
+			if layers[index].QtyLeft <= 0 {
+				continue
+			}
+
+			usedQty := remaining
+			if layers[index].QtyLeft < usedQty {
+				usedQty = layers[index].QtyLeft
+			}
+			if countCost {
+				totalCost += float64(usedQty) * layers[index].UnitPrice
+			}
+
+			layers[index].QtyLeft -= usedQty
+			remaining -= usedQty
+		}
+		layersBySKU[sale.SKUID] = layers
 	}
-	return avg, nil
+
+	return totalCost, nil
 }
 
-func (h *ReportsHandler) totalExpenses(fromFilter bool, from interface{}, toFilter bool, to interface{}) (float64, error) {
+func (h *ReportsHandler) totalExpenses(fromFilter bool, from time.Time, toFilter bool, to time.Time) (float64, error) {
 	query := h.DB.Model(&models.Expense{})
 	if fromFilter {
 		query = query.Where("date >= ?", from)

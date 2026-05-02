@@ -22,8 +22,30 @@ body {
   padding: 20px;
 }
 
+.app-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 header h1 {
   margin: 0 0 12px;
+}
+
+.database-switcher {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.database-switcher span {
+  color: #64748b;
+  font-size: 12px;
+  text-align: right;
 }
 
 nav {
@@ -50,6 +72,25 @@ nav a.active {
   background: #fff;
   border-radius: 12px;
   padding: 16px;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.page-heading h2 {
+  margin: 0;
+}
+
+.page-heading p,
+.section-heading span {
+  color: #64748b;
+  font-size: 14px;
+  margin: 4px 0 0;
 }
 
 .cards {
@@ -94,7 +135,66 @@ nav a.active {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+}
+
+.report-panel {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.6fr);
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+
+.report-panel-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-label {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.custom-range .date-filter {
+  margin-bottom: 0;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.metric-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.metric-card p {
+  color: #64748b;
+  margin: 0;
+}
+
+.metric-card h3 {
+  font-size: 24px;
+  margin: 10px 0 0;
+}
+
+.metric-card.emphasis {
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+}
+
+.metric-card.emphasis p {
+  color: #d1d5db;
 }
 
 .estimate-section {
@@ -122,43 +222,113 @@ nav a.active {
   margin: 12px 0 18px;
 }
 
+.recent-section {
+  border-top: 1px solid #e5e7eb;
+  margin-top: 16px;
+  padding-top: 14px;
+}
+
+.recent-section h3 {
+  margin: 0 0 10px;
+}
+
 .dashboard-section {
   border-top: 1px solid #e5e7eb;
   margin-top: 16px;
   padding-top: 16px;
 }
 
-.dashboard-section h3 {
-  margin: 0 0 12px;
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
-.trend-grid {
+.section-heading h3 {
+  margin: 0;
+}
+
+.chart-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
 }
 
-.trend-card,
+.chart-card,
 .stock-alert {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   padding: 12px;
 }
 
-.trend-card {
+.chart-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
-.trend-card span,
+.chart-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chart-card-header span,
 .stock-alert span {
   color: #64748b;
   font-size: 13px;
 }
 
-.trend-card strong {
+.chart-card-header strong {
   font-size: 22px;
+}
+
+.bar-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.bar-row {
+  display: grid;
+  gap: 6px;
+}
+
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.bar-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-label strong {
+  flex: 0 0 auto;
+}
+
+.bar-track {
+  background: #e5e7eb;
+  border-radius: 999px;
+  height: 10px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  background: #2563eb;
+  border-radius: inherit;
+  height: 100%;
+  min-width: 4px;
+}
+
+.chart-empty {
+  margin: 14px 0;
 }
 
 .alert-list {
@@ -221,6 +391,7 @@ label {
 }
 
 input,
+select,
 button {
   padding: 8px;
   border-radius: 8px;
@@ -314,4 +485,21 @@ td {
 
 .error {
   color: #b91c1c;
+}
+
+@media (max-width: 760px) {
+  .app-header,
+  .page-heading,
+  .section-heading,
+  .stock-alert {
+    flex-direction: column;
+  }
+
+  .report-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-alert-counts {
+    align-items: flex-start;
+  }
 }

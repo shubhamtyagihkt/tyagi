@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS purchases (
 CREATE TABLE IF NOT EXISTS sales (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sku_id TEXT NOT NULL,
+    sale_type TEXT NOT NULL DEFAULT 'item',
+    service_name TEXT NOT NULL DEFAULT '',
     qty INTEGER NOT NULL,
     sale_price REAL NOT NULL,
     customer TEXT NOT NULL DEFAULT '',

@@ -6,13 +6,17 @@ import SalesPage from './pages/Sales'
 import ExpensesPage from './pages/Expenses'
 import ReportsPage from './pages/Reports'
 import FinancePage from './pages/Finance'
+import DatabaseSwitcher from './components/DatabaseSwitcher'
 
 function App() {
   return (
     <BrowserRouter>
       <div className="layout">
         <header>
-          <h1>AutoParts Inventory</h1>
+          <div className="app-header">
+            <h1>AutoParts Inventory</h1>
+            <DatabaseSwitcher />
+          </div>
           <nav>
             <NavLink to="/">Dashboard</NavLink>
             <NavLink to="/sku">SKU</NavLink>

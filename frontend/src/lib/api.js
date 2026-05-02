@@ -77,4 +77,20 @@ export const api = {
     addInvestment: (payload) =>
       request('/finance/investment', { method: 'POST', body: JSON.stringify(payload) }),
   },
+  database: {
+    select: async (file) => {
+      const formData = new FormData()
+      formData.append('database', file)
+
+      const response = await fetch(`${API_BASE_URL}/database/select`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed (${response.status})`)
+      }
+      return data
+    },
+  },
 }
