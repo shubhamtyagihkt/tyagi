@@ -13,11 +13,14 @@ const initialForm = {
   compatibility: '',
   unit: '',
   expected_sale_price: '',
+  min_stock: '',
 }
 
 function SKUPage() {
   const [search, setSearch] = useState('')
   const [form, setForm] = useState(initialForm)
+  const [editingId, setEditingId] = useState('')
+  const [editForm, setEditForm] = useState(null)
   const [rows, setRows] = useState([])
   const [skuOptions, setSkuOptions] = useState([])
   const [error, setError] = useState('')
@@ -93,6 +96,7 @@ function SKUPage() {
       await api.sku.create({
         ...form,
         expected_sale_price: Number(form.expected_sale_price || 0),
+        min_stock: Number(form.min_stock || 0),
       })
       setForm(initialForm)
       await loadSkuOptions()
@@ -102,15 +106,107 @@ function SKUPage() {
     }
   }
 
+  const startEdit = (row) => {
+    setEditingId(row.id)
+    setEditForm({
+      name: row.name || '',
+      category: row.category || '',
+      subcategory: row.subcategory || '',
+      brand: row.brand || '',
+      compatibility: row.compatibility || '',
+      unit: row.unit || '',
+      expected_sale_price: String(row.expected_sale_price ?? ''),
+      min_stock: String(row.min_stock ?? ''),
+    })
+  }
+
+  const cancelEdit = () => {
+    setEditingId('')
+    setEditForm(null)
+  }
+
+  const updateEditField = (field, value) => {
+    setEditForm({ ...editForm, [field]: value })
+  }
+
+  const renderEditableCell = (row, field, inputProps = {}) => {
+    if (editingId !== row.id) {
+      return row[field]
+    }
+
+    return (
+      <input
+        className="table-input"
+        value={editForm[field]}
+        onChange={(e) => updateEditField(field, e.target.value)}
+        {...inputProps}
+      />
+    )
+  }
+
+  const saveEdit = async (row) => {
+    setError('')
+    try {
+      await api.sku.update(row.id, {
+        ...editForm,
+        expected_sale_price: Number(editForm.expected_sale_price || 0),
+        min_stock: Number(editForm.min_stock || 0),
+      })
+      cancelEdit()
+      await loadSkuOptions()
+      await loadData(search)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   const columns = [
     { key: 'id', title: 'SKU ID' },
-    { key: 'name', title: 'Name' },
-    { key: 'category', title: 'Category' },
-    { key: 'subcategory', title: 'Subcategory' },
-    { key: 'brand', title: 'Brand' },
+    { key: 'name', title: 'Name', render: (row) => renderEditableCell(row, 'name') },
+    { key: 'category', title: 'Category', render: (row) => renderEditableCell(row, 'category') },
+    { key: 'subcategory', title: 'Subcategory', render: (row) => renderEditableCell(row, 'subcategory') },
+    { key: 'brand', title: 'Brand', render: (row) => renderEditableCell(row, 'brand') },
     { key: 'unit', title: 'Unit' },
-    { key: 'expected_sale_price', title: 'Expected Sale Price' },
+    {
+      key: 'expected_sale_price',
+      title: 'Expected Sale Price',
+      render: (row) =>
+        renderEditableCell(row, 'expected_sale_price', {
+          type: 'number',
+          min: '0',
+          step: '0.01',
+        }),
+    },
+    {
+      key: 'min_stock',
+      title: 'Min Stock',
+      render: (row) =>
+        renderEditableCell(row, 'min_stock', {
+          type: 'number',
+          min: '0',
+          step: '1',
+        }),
+    },
     { key: 'current_stock', title: 'Current Stock' },
+    {
+      key: 'actions',
+      title: 'Actions',
+      render: (row) =>
+        editingId === row.id ? (
+          <div className="row-actions">
+            <button type="button" onClick={() => saveEdit(row)}>
+              Save
+            </button>
+            <button type="button" className="secondary" onClick={cancelEdit}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="secondary" onClick={() => startEdit(row)}>
+            Edit
+          </button>
+        ),
+    },
   ]
 
   return (
@@ -155,6 +251,14 @@ function SKUPage() {
           step="0.01"
           value={form.expected_sale_price}
           onChange={(e) => setForm({ ...form, expected_sale_price: e.target.value })}
+        />
+        <input
+          placeholder="Min Stock"
+          type="number"
+          min="0"
+          step="1"
+          value={form.min_stock}
+          onChange={(e) => setForm({ ...form, min_stock: e.target.value })}
         />
         <button type="submit">Add SKU</button>
       </form>

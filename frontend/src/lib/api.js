@@ -72,4 +72,9 @@ export const api = {
       return request(`/reports${query ? `?${query}` : ''}`)
     },
   },
+  finance: {
+    summary: () => request('/finance'),
+    addInvestment: (payload) =>
+      request('/finance/investment', { method: 'POST', body: JSON.stringify(payload) }),
+  },
 }

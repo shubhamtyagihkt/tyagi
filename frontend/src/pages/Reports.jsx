@@ -2,6 +2,29 @@ import { useState } from 'react'
 import { api } from '../lib/api'
 import DateFilter from '../components/DateFilter'
 
+function formatDate(date) {
+  return date.toLocaleDateString('en-CA')
+}
+
+function getPresetRange(preset) {
+  const now = new Date()
+  const today = formatDate(now)
+
+  if (preset === 'today') {
+    return { dateFrom: today, dateTo: today }
+  }
+
+  if (preset === 'week') {
+    const start = new Date(now)
+    const day = now.getDay()
+    start.setDate(now.getDate() + (day === 0 ? -6 : 1 - day))
+    return { dateFrom: formatDate(start), dateTo: today }
+  }
+
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  return { dateFrom: formatDate(start), dateTo: today }
+}
+
 function ReportsPage() {
   const [filters, setFilters] = useState({ dateFrom: '', dateTo: '' })
   const [report, setReport] = useState(null)
@@ -21,6 +44,12 @@ function ReportsPage() {
     }
   }
 
+  const applyPreset = (preset) => {
+    const next = getPresetRange(preset)
+    setFilters(next)
+    loadReport(next)
+  }
+
   return (
     <section className="page">
       <h2>P&amp;L Reports</h2>
@@ -35,6 +64,18 @@ function ReportsPage() {
           loadReport(next)
         }}
       />
+
+      <div className="quick-filters">
+        <button type="button" className="secondary" onClick={() => applyPreset('today')}>
+          Today
+        </button>
+        <button type="button" className="secondary" onClick={() => applyPreset('week')}>
+          This Week
+        </button>
+        <button type="button" className="secondary" onClick={() => applyPreset('month')}>
+          This Month
+        </button>
+      </div>
 
       <button type="button" onClick={() => loadReport(filters)}>
         Generate Report

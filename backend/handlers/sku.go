@@ -23,6 +23,7 @@ type createSKURequest struct {
 	Compatibility     string  `json:"compatibility"`
 	Unit              string  `json:"unit" binding:"required"`
 	ExpectedSalePrice float64 `json:"expected_sale_price"`
+	MinStock          int     `json:"min_stock"`
 }
 
 type updateSKURequest struct {
@@ -33,6 +34,7 @@ type updateSKURequest struct {
 	Compatibility     string  `json:"compatibility"`
 	Unit              string  `json:"unit" binding:"required"`
 	ExpectedSalePrice float64 `json:"expected_sale_price"`
+	MinStock          int     `json:"min_stock"`
 }
 
 type skuResponse struct {
@@ -100,6 +102,7 @@ func (h *SKUHandler) Create(c *gin.Context) {
 		Compatibility:     payload.Compatibility,
 		Unit:              payload.Unit,
 		ExpectedSalePrice: payload.ExpectedSalePrice,
+		MinStock:          payload.MinStock,
 	}
 
 	if err := h.DB.Create(&sku).Error; err != nil {
@@ -162,6 +165,7 @@ func (h *SKUHandler) Update(c *gin.Context) {
 	sku.Compatibility = payload.Compatibility
 	sku.Unit = payload.Unit
 	sku.ExpectedSalePrice = payload.ExpectedSalePrice
+	sku.MinStock = payload.MinStock
 
 	if err := h.DB.Save(&sku).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

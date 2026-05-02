@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 
 function SKUSearch({ value, onChange, skus, placeholder = 'Search SKU...' }) {
+  const listId = useId()
   const options = useMemo(
     () =>
       skus.map((sku) => ({
@@ -13,12 +14,12 @@ function SKUSearch({ value, onChange, skus, placeholder = 'Search SKU...' }) {
   return (
     <div>
       <input
-        list="sku-search-options"
+        list={listId}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
-      <datalist id="sku-search-options">
+      <datalist id={listId}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

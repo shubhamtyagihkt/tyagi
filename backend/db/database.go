@@ -14,7 +14,7 @@ func Connect() (*gorm.DB, error) {
 	}
 
 	// Create table if not exist / add column if not in table
-	if err := database.AutoMigrate(&models.SKU{}, &models.Purchase{}, &models.Sale{}, &models.Expense{}); err != nil {
+	if err := database.AutoMigrate(&models.SKU{}, &models.Purchase{}, &models.Sale{}, &models.Expense{}, &models.FinanceTransaction{}); err != nil {
 		return nil, err
 	}
 

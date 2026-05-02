@@ -26,6 +26,7 @@ func Setup(database *gorm.DB) *gin.Engine {
 		saleHandler := handlers.NewSaleHandler(database)
 		expenseHandler := handlers.NewExpenseHandler(database)
 		reportsHandler := handlers.NewReportsHandler(database)
+		financeHandler := handlers.NewFinanceHandler(database)
 
 		api.GET("/sku", skuHandler.List)
 		api.POST("/sku", skuHandler.Create)
@@ -45,6 +46,9 @@ func Setup(database *gorm.DB) *gin.Engine {
 		api.DELETE("/expense/:id", expenseHandler.SoftDelete)
 
 		api.GET("/reports", reportsHandler.Summary)
+
+		api.GET("/finance", financeHandler.Summary)
+		api.POST("/finance/investment", financeHandler.CreateInvestment)
 	}
 
 	return r

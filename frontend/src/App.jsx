@@ -5,6 +5,7 @@ import PurchasePage from './pages/Purchase'
 import SalesPage from './pages/Sales'
 import ExpensesPage from './pages/Expenses'
 import ReportsPage from './pages/Reports'
+import FinancePage from './pages/Finance'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <NavLink to="/sales">Sales</NavLink>
             <NavLink to="/expenses">Expenses</NavLink>
             <NavLink to="/reports">Reports</NavLink>
+            <NavLink to="/finance">Finance</NavLink>
           </nav>
         </header>
 
@@ -30,6 +32,7 @@ function App() {
             <Route path="/sales" element={<SalesPage />} />
             <Route path="/expenses" element={<ExpensesPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/finance" element={<FinancePage />} />
           </Routes>
         </main>
       </div>

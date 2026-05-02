@@ -23,11 +23,11 @@ function EntryTable({ columns, rows, onDelete, deleteLabel = 'Delete' }) {
               </td>
             </tr>
           ) : (
-            rows.map((row) => (
+            rows.map((row, index) => (
               <tr key={row.id}>
                 {columns.map((column) => (
                   <td key={`${row.id}-${column.key}`}>
-                    {column.render ? column.render(row) : formatValue(row[column.key])}
+                    {column.render ? column.render(row, index) : formatValue(row[column.key])}
                   </td>
                 ))}
                 {onDelete && (

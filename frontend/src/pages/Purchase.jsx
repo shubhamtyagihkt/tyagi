@@ -85,7 +85,7 @@ function PurchasePage() {
   }
 
   const columns = [
-    { key: 'id', title: 'ID' },
+    { key: 'serial', title: 'S. No.', render: (row, index) => index + 1 },
     { key: 'sku_id', title: 'SKU ID' },
     { key: 'item_name', title: 'Item Name', render: (row) => skuById.get(row.sku_id)?.name || '-' },
     { key: 'qty', title: 'Qty' },

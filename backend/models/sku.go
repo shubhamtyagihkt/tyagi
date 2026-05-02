@@ -15,6 +15,7 @@ type SKU struct {
 	Compatibility     string         `json:"compatibility" gorm:"not null;default:''"`
 	Unit              string         `json:"unit" gorm:"not null"`
 	ExpectedSalePrice float64        `json:"expected_sale_price" gorm:"not null;default:0"`
+	MinStock          int            `json:"min_stock" gorm:"not null;default:0"`
 	CreatedAt         time.Time      `json:"created_at"`
 	UpdatedAt         time.Time      `json:"updated_at"`
 	DeletedAt         gorm.DeletedAt `json:"-" gorm:"index"`
@@ -57,6 +58,16 @@ type Expense struct {
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+}
+
+type FinanceTransaction struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Title     string    `json:"title" gorm:"not null"`
+	Amount    float64   `json:"amount" gorm:"not null"`
+	Notes     string    `json:"notes" gorm:"not null;default:''"`
+	Date      time.Time `json:"date" gorm:"not null;index"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (p *Purchase) BeforeCreate(tx *gorm.DB) error {
