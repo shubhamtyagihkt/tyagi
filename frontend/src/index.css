@@ -105,6 +105,42 @@ button {
   font: inherit;
 }
 
+.search-select {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-select input {
+  width: 100%;
+}
+
+.field-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field-stack input {
+  width: 100%;
+}
+
+.create-hint {
+  min-height: 16px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.field-note {
+  min-height: 16px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
 button {
   cursor: pointer;
   background: #111827;

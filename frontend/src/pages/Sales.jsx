@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../lib/api'
 import SKUSearch from '../components/SKUSearch'
 import DateFilter from '../components/DateFilter'
@@ -18,11 +18,8 @@ function SalesPage() {
   const [form, setForm] = useState(initialForm)
   const [error, setError] = useState('')
   const [filters, setFilters] = useState({ dateFrom: '', dateTo: '' })
-
-  async function loadSkus() {
-    const data = await api.sku.list('')
-    setSkus(data)
-  }
+  const skuById = useMemo(() => new Map(skus.map((sku) => [sku.id, sku])), [skus])
+  const selectedSku = skuById.get(form.sku_id)
 
   async function loadSales(activeFilters = filters) {
     try {
@@ -34,8 +31,29 @@ function SalesPage() {
   }
 
   useEffect(() => {
-    loadSkus()
-    loadSales()
+    let ignore = false
+
+    async function loadInitialData() {
+      try {
+        const [skuData, saleData] = await Promise.all([
+          api.sku.list(''),
+          api.sale.list({ dateFrom: '', dateTo: '' }),
+        ])
+        if (ignore) return
+        setSkus(skuData)
+        setRows(saleData)
+      } catch (err) {
+        if (!ignore) {
+          setError(err.message)
+        }
+      }
+    }
+
+    loadInitialData()
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   const submit = async (e) => {
@@ -66,6 +84,7 @@ function SalesPage() {
   const columns = [
     { key: 'id', title: 'ID' },
     { key: 'sku_id', title: 'SKU ID' },
+    { key: 'item_name', title: 'Item Name', render: (row) => skuById.get(row.sku_id)?.name || '-' },
     { key: 'qty', title: 'Qty' },
     { key: 'sale_price', title: 'Sale Price' },
     { key: 'customer', title: 'Customer' },
@@ -76,7 +95,10 @@ function SalesPage() {
     <section className="page">
       <h2>Sales</h2>
       <form className="grid-form" onSubmit={submit}>
-        <SKUSearch value={form.sku_id} onChange={(value) => setForm({ ...form, sku_id: value })} skus={skus} />
+        <div className="field-stack">
+          <SKUSearch value={form.sku_id} onChange={(value) => setForm({ ...form, sku_id: value })} skus={skus} />
+          <span className="field-note">{selectedSku?.name || 'Item name'}</span>
+        </div>
         <input type="number" min="1" placeholder="Qty" value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} required />
         <input type="number" min="0" step="0.01" placeholder="Sale Price" value={form.sale_price} onChange={(e) => setForm({ ...form, sale_price: e.target.value })} required />
         <input placeholder="Customer" value={form.customer} onChange={(e) => setForm({ ...form, customer: e.target.value })} />

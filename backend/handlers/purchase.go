@@ -94,7 +94,18 @@ func (h *PurchaseHandler) Create(c *gin.Context) {
 		Date:              parsedDate,
 	}
 
-	if err := h.DB.Create(&purchase).Error; err != nil {
+	err = h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&purchase).Error; err != nil {
+			return err
+		}
+
+		if payload.ExpectedSalePrice != nil {
+			return tx.Model(&sku).Update("expected_sale_price", *payload.ExpectedSalePrice).Error
+		}
+
+		return nil
+	})
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
