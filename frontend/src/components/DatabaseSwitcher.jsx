@@ -4,24 +4,26 @@ import { api } from '../lib/api'
 function DatabaseSwitcher() {
   const inputRef = useRef(null)
   const [message, setMessage] = useState('')
+  const [dbPath, setDbPath] = useState('')
 
   const selectDatabase = () => {
-    inputRef.current?.click()
+    inputRef.current?.focus()
   }
 
-  const uploadDatabase = async (event) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
+  const switchDatabase = async () => {
+    if (!dbPath.trim()) {
+      setMessage('Please enter a database path')
+      return
+    }
 
     const confirmed = window.confirm(
-      `You are about to switch the backend database to "${file.name}". This will change the data used by the whole app immediately. Continue only if you know this is the correct SQLite database.`,
+      `You are about to switch the backend database to "${dbPath}". This will change the data used by the whole app immediately. Continue only if you know this is the correct SQLite database path.`,
     )
     if (!confirmed) return
 
     setMessage('Switching database...')
     try {
-      await api.database.select(file)
+      await api.database.select(dbPath.trim())
       setMessage('Database switched. Refreshing app...')
       window.location.reload()
     } catch (err) {
@@ -29,18 +31,26 @@ function DatabaseSwitcher() {
     }
   }
 
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter') {
+      switchDatabase()
+    }
+  }
+
   return (
     <div className="database-switcher">
-      <button type="button" className="secondary" onClick={selectDatabase}>
-        Select DB
-      </button>
       <input
         ref={inputRef}
-        type="file"
-        accept=".db,.sqlite,.sqlite3"
-        onChange={uploadDatabase}
-        hidden
+        type="text"
+        placeholder="Enter database path (e.g., mydata.db)"
+        value={dbPath}
+        onChange={(e) => setDbPath(e.target.value)}
+        onKeyPress={handleKeyPress}
+        style={{ marginRight: '8px', padding: '4px' }}
       />
+      <button type="button" className="secondary" onClick={switchDatabase}>
+        Switch DB
+      </button>
       {message && <span>{message}</span>}
     </div>
   )

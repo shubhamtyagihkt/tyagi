@@ -78,13 +78,13 @@ export const api = {
       request('/finance/investment', { method: 'POST', body: JSON.stringify(payload) }),
   },
   database: {
-    select: async (file) => {
-      const formData = new FormData()
-      formData.append('database', file)
-
+    select: async (path) => {
       const response = await fetch(`${API_BASE_URL}/database/select`, {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ path }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
