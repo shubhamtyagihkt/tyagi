@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -96,6 +97,12 @@ func (h *SKUHandler) List(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	fmt.Println("found skus", len(skus))
+	fmt.Println(query)
+	fmt.Println("search", search)
+	fmt.Println("category", category)
+	fmt.Println("subcategory", subcategory)
+	fmt.Println("brand", brand)
 
 	response := make([]skuResponse, 0, len(skus))
 	for _, sku := range skus {
