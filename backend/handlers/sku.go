@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"autoparts-app/backend/models"
@@ -51,6 +52,12 @@ func (h *SKUHandler) List(c *gin.Context) {
 
 	query := h.DB.Model(&models.SKU{}).Where("id <> ?", serviceSaleSKUID)
 	search := strings.TrimSpace(c.Query("q"))
+	category := strings.TrimSpace(c.Query("category"))
+	subcategory := strings.TrimSpace(c.Query("subcategory"))
+	brand := strings.TrimSpace(c.Query("brand"))
+	limit := c.Query("limit")
+	sortBy := c.Query("sort")
+
 	if search != "" {
 		like := "%" + strings.ToLower(search) + "%"
 		query = query.Where(
@@ -59,7 +66,33 @@ func (h *SKUHandler) List(c *gin.Context) {
 		)
 	}
 
-	if err := query.Order("category asc, subcategory asc, name asc").Find(&skus).Error; err != nil {
+	if category != "" {
+		query = query.Where("LOWER(category) = LOWER(?)", category)
+	}
+
+	if subcategory != "" {
+		query = query.Where("LOWER(subcategory) = LOWER(?)", subcategory)
+	}
+
+	if brand != "" {
+		query = query.Where("LOWER(brand) = LOWER(?)", brand)
+	}
+
+	// Default sorting: recent first, then by category/subcategory/name
+	if sortBy == "recent" {
+		query = query.Order("created_at DESC")
+	} else {
+		query = query.Order("category asc, subcategory asc, name asc")
+	}
+
+	// Limit results if specified
+	if limit != "" {
+		if limitNum, err := strconv.Atoi(limit); err == nil && limitNum > 0 {
+			query = query.Limit(limitNum)
+		}
+	}
+
+	if err := query.Find(&skus).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

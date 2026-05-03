@@ -28,6 +28,45 @@ function categorySales(rows, skuById) {
     .sort((a, b) => b.total - a.total)
 }
 
+function subcategorySales(rows, skuById) {
+  const totals = new Map()
+
+  rows.forEach((row) => {
+    if (row.sale_type === 'service') {
+      totals.set('Service', (totals.get('Service') || 0) + row.qty * row.sale_price)
+      return
+    }
+
+    const sku = skuById.get(row.sku_id)
+    const subcategory = sku?.subcategory || 'Uncategorized'
+    totals.set(subcategory, (totals.get(subcategory) || 0) + row.qty * row.sale_price)
+  })
+
+  return [...totals.entries()]
+    .map(([subcategory, total]) => ({ subcategory, total }))
+    .sort((a, b) => b.total - a.total)
+}
+
+function productSales(rows, skuById) {
+  const totals = new Map()
+
+  rows.forEach((row) => {
+    if (row.sale_type === 'service') {
+      totals.set('Service', (totals.get('Service') || 0) + row.qty * row.sale_price)
+      return
+    }
+
+    const sku = skuById.get(row.sku_id)
+    const productName = sku?.name || 'Uncategorized'
+    totals.set(productName, (totals.get(productName) || 0) + row.qty * row.sale_price)
+  })
+
+  return [...totals.entries()]
+    .map(([product, total]) => ({ product, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 20)
+}
+
 function CategorySalesChart({ title, total, rows }) {
   const max = Math.max(...rows.map((row) => row.total), 0)
 
@@ -59,15 +98,77 @@ function CategorySalesChart({ title, total, rows }) {
   )
 }
 
+function SubcategorySalesChart({ title, total, rows }) {
+  const max = Math.max(...rows.map((row) => row.total), 0)
+
+  return (
+    <article className="chart-card">
+      <div className="chart-card-header">
+        <span>{title}</span>
+        <strong>{total.toFixed(2)}</strong>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="empty chart-empty">No sales in this period.</p>
+      ) : (
+        <div className="bar-chart">
+          {rows.map((row) => (
+            <div className="bar-row" key={row.subcategory}>
+              <div className="bar-label">
+                <span>{row.subcategory}</span>
+                <strong>{row.total.toFixed(2)}</strong>
+              </div>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ width: `${(row.total / max) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </article>
+  )
+}
+
+function ProductSalesChart({ title, total, rows }) {
+  const max = Math.max(...rows.map((row) => row.total), 0)
+
+  return (
+    <article className="chart-card">
+      <div className="chart-card-header">
+        <span>{title}</span>
+        <strong>{total.toFixed(2)}</strong>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="empty chart-empty">No sales in this period.</p>
+      ) : (
+        <div className="bar-chart">
+          {rows.map((row) => (
+            <div className="bar-row" key={row.product}>
+              <div className="bar-label">
+                <span title={row.product}>{row.product.length > 40 ? row.product.substring(0, 37) + '...' : row.product}</span>
+                <strong>{row.total.toFixed(2)}</strong>
+              </div>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ width: `${(row.total / max) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </article>
+  )
+}
+
 function Dashboard() {
   const [lowStockRows, setLowStockRows] = useState([])
   const [todaySales, setTodaySales] = useState(0)
   const [todayPurchases, setTodayPurchases] = useState(0)
   const [monthNetProfit, setMonthNetProfit] = useState(0)
   const [salesTrend, setSalesTrend] = useState({
-    daily: { total: 0, categories: [] },
-    weekly: { total: 0, categories: [] },
-    monthly: { total: 0, categories: [] },
+    daily: { total: 0, categories: [], subcategories: [], products: [] },
+    weekly: { total: 0, categories: [], subcategories: [], products: [] },
+    monthly: { total: 0, categories: [], subcategories: [], products: [] },
   })
   const [error, setError] = useState('')
 
@@ -104,14 +205,20 @@ function Dashboard() {
           daily: {
             total: salesTotal(dailySales),
             categories: categorySales(dailySales, skuById),
+            subcategories: subcategorySales(dailySales, skuById),
+            products: productSales(dailySales, skuById),
           },
           weekly: {
             total: salesTotal(weeklySales),
             categories: categorySales(weeklySales, skuById),
+            subcategories: subcategorySales(weeklySales, skuById),
+            products: productSales(weeklySales, skuById),
           },
           monthly: {
             total: salesTotal(monthlySales),
             categories: categorySales(monthlySales, skuById),
+            subcategories: subcategorySales(monthlySales, skuById),
+            products: productSales(monthlySales, skuById),
           },
         })
       } catch (err) {
@@ -162,6 +269,54 @@ function Dashboard() {
             title="This Month"
             total={salesTrend.monthly.total}
             rows={salesTrend.monthly.categories}
+          />
+        </div>
+      </section>
+
+      <section className="dashboard-section">
+        <div className="section-heading">
+          <h3>Sales Trend by Subcategory</h3>
+          <span>Day, week, and month performance grouped by item subcategory.</span>
+        </div>
+        <div className="chart-grid">
+          <SubcategorySalesChart
+            title="Today"
+            total={salesTrend.daily.total}
+            rows={salesTrend.daily.subcategories}
+          />
+          <SubcategorySalesChart
+            title="This Week"
+            total={salesTrend.weekly.total}
+            rows={salesTrend.weekly.subcategories}
+          />
+          <SubcategorySalesChart
+            title="This Month"
+            total={salesTrend.monthly.total}
+            rows={salesTrend.monthly.subcategories}
+          />
+        </div>
+      </section>
+
+      <section className="dashboard-section">
+        <div className="section-heading">
+          <h3>Top 20 Products by Sales</h3>
+          <span>Day, week, and month performance grouped by individual product.</span>
+        </div>
+        <div className="chart-grid">
+          <ProductSalesChart
+            title="Today"
+            total={salesTrend.daily.total}
+            rows={salesTrend.daily.products}
+          />
+          <ProductSalesChart
+            title="This Week"
+            total={salesTrend.weekly.total}
+            rows={salesTrend.weekly.products}
+          />
+          <ProductSalesChart
+            title="This Month"
+            total={salesTrend.monthly.total}
+            rows={salesTrend.monthly.products}
           />
         </div>
       </section>

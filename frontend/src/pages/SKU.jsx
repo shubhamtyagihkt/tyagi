@@ -18,6 +18,9 @@ const initialForm = {
 
 function SKUPage() {
   const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [subcategoryFilter, setSubcategoryFilter] = useState('')
+  const [brandFilter, setBrandFilter] = useState('')
   const [form, setForm] = useState(initialForm)
   const [editingId, setEditingId] = useState('')
   const [editForm, setEditForm] = useState(null)
@@ -46,13 +49,28 @@ function SKUPage() {
     return data
   }
 
-  async function loadData(query = '') {
+  async function loadData(query = '', category = '', subcategory = '', brand = '', isInitialLoad = false) {
     setLoading(true)
     setError('')
     try {
-      const data = await api.sku.list(query)
+      const params = new URLSearchParams()
+      if (query) params.append('q', query)
+      if (category) params.append('category', category)
+      if (subcategory) params.append('subcategory', subcategory)
+      if (brand) params.append('brand', brand)
+
+      // For initial load, show top 20 recent SKUs
+      if (isInitialLoad) {
+        params.append('sort', 'recent')
+        params.append('limit', '20')
+      }
+
+      const queryString = params.toString()
+      const url = queryString ? `/api/sku?${queryString}` : '/api/sku'
+
+      const data = await api.sku.list(url)
       setRows(data)
-      if (!query) {
+      if (!query && !category && !subcategory && !brand) {
         setSkuOptions(data)
       }
     } catch (err) {
@@ -67,10 +85,7 @@ function SKUPage() {
 
     async function loadInitialData() {
       try {
-        const data = await api.sku.list()
-        if (ignore) return
-        setRows(data)
-        setSkuOptions(data)
+        await loadData('', '', '', '', true)
       } catch (err) {
         if (!ignore) {
           setError(err.message)
@@ -100,7 +115,7 @@ function SKUPage() {
       })
       setForm(initialForm)
       await loadSkuOptions()
-      await loadData(search)
+      await loadData(search, categoryFilter, subcategoryFilter, brandFilter)
     } catch (err) {
       setError(err.message)
     }
@@ -154,7 +169,7 @@ function SKUPage() {
       })
       cancelEdit()
       await loadSkuOptions()
-      await loadData(search)
+      await loadData(search, categoryFilter, subcategoryFilter, brandFilter)
     } catch (err) {
       setError(err.message)
     }
@@ -272,6 +287,102 @@ function SKUPage() {
         <button type="button" onClick={() => loadData(search)}>
           Search
         </button>
+      </div>
+
+      {/* Enhanced Search and Filter Section */}
+      <div className="search-section">
+        <h3>Advanced Search & Filters</h3>
+
+        <div className="search-filters">
+          <div className="search-input-group">
+            <input
+              type="text"
+              placeholder="🔍 Search SKUs by name, ID, category, brand..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="large-search-input"
+              onKeyPress={(e) => e.key === 'Enter' && loadData(search, categoryFilter, subcategoryFilter, brandFilter)}
+            />
+            <button
+              type="button"
+              className="search-button"
+              onClick={() => loadData(search, categoryFilter, subcategoryFilter, brandFilter)}
+            >
+              Search
+            </button>
+            <button
+              type="button"
+              className="clear-button"
+              onClick={() => {
+                setSearch('')
+                setCategoryFilter('')
+                setSubcategoryFilter('')
+                setBrandFilter('')
+                loadData('', '', '', '', true)
+              }}
+            >
+              Clear All
+            </button>
+          </div>
+
+          <div className="filter-row">
+            <div className="filter-group">
+              <label>Category:</label>
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="">All Categories</option>
+                {uniqueValues('category').map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Subcategory:</label>
+              <select
+                value={subcategoryFilter}
+                onChange={(e) => setSubcategoryFilter(e.target.value)}
+              >
+                <option value="">All Subcategories</option>
+                {uniqueValues('subcategory').map(sub => (
+                  <option key={sub} value={sub}>{sub}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Brand:</label>
+              <select
+                value={brandFilter}
+                onChange={(e) => setBrandFilter(e.target.value)}
+              >
+                <option value="">All Brands</option>
+                {uniqueValues('brand').map(brand => (
+                  <option key={brand} value={brand}>{brand}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="filter-actions">
+            <button
+              type="button"
+              className="filter-button"
+              onClick={() => loadData(search, categoryFilter, subcategoryFilter, brandFilter)}
+            >
+              Apply Filters
+            </button>
+            <button
+              type="button"
+              className="reset-button"
+              onClick={() => loadData('', '', '', '', true)}
+            >
+              Show Recent (Top 20)
+            </button>
+          </div>
+        </div>
       </div>
 
       {loading && <p>Loading...</p>}

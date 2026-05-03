@@ -15,6 +15,25 @@ function formatMoney(value) {
   return Number(value || 0).toFixed(2)
 }
 
+function InputOutputDisplay({ input, output }) {
+  const net = input - output
+  const netColor = net < 0 ? '#d32f2f' : '#1976d2' // red if negative, blue if positive
+  
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+      <div style={{ fontSize: '0.9em', color: '#666' }}>
+        Input: <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>₹{formatMoney(input)}</span>
+      </div>
+      <div style={{ fontSize: '0.9em', color: '#666' }}>
+        Output: <span style={{ color: '#d32f2f', fontWeight: 'bold' }}>₹{formatMoney(output)}</span>
+      </div>
+      <div style={{ fontSize: '0.9em', color: '#666', borderTop: '1px solid #e0e0e0', paddingTop: '4px', marginTop: '2px' }}>
+        Net: <span style={{ color: netColor, fontWeight: 'bold' }}>₹{formatMoney(net)}</span>
+      </div>
+    </div>
+  )
+}
+
 function FinancePage() {
   const [summary, setSummary] = useState(null)
   const [form, setForm] = useState(initialForm)
@@ -93,16 +112,16 @@ function FinancePage() {
               <h3>{formatMoney(summary.total_money_available)}</h3>
             </article>
             <article className="card">
-              <p>Today Input / Output</p>
-              <h3>{formatMoney(summary.today.input)} / {formatMoney(summary.today.output)}</h3>
+              <p>Today</p>
+              <h3><InputOutputDisplay input={summary.today.input} output={summary.today.output} /></h3>
             </article>
             <article className="card">
-              <p>This Week Input / Output</p>
-              <h3>{formatMoney(summary.week.input)} / {formatMoney(summary.week.output)}</h3>
+              <p>This Week</p>
+              <h3><InputOutputDisplay input={summary.week.input} output={summary.week.output} /></h3>
             </article>
             <article className="card">
-              <p>This Month Input / Output</p>
-              <h3>{formatMoney(summary.month.input)} / {formatMoney(summary.month.output)}</h3>
+              <p>This Month</p>
+              <h3><InputOutputDisplay input={summary.month.input} output={summary.month.output} /></h3>
             </article>
           </div>
 

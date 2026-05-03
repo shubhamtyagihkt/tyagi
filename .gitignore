@@ -5,3 +5,5 @@ databases/
 *.db
 *.sqlite
 *.sqlite3
+bin/
+dist/
