@@ -55,6 +55,7 @@ function SKUPage() {
     try {
       const params = new URLSearchParams()
       if (query) params.append('q', query)
+        console.log("query", query)
       if (category) params.append('category', category)
       if (subcategory) params.append('subcategory', subcategory)
       if (brand) params.append('brand', brand)
@@ -66,8 +67,9 @@ function SKUPage() {
       }
 
       const queryString = params.toString()
-      const url = queryString ? `/api/sku?${queryString}` : '/api/sku'
+      const url = queryString ? `/sku?${queryString}` : '/api/sku'
 
+      console.log("queryString", queryString)
       const data = await api.sku.list(url)
       setRows(data)
       if (!query && !category && !subcategory && !brand) {

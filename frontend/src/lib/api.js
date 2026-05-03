@@ -23,7 +23,7 @@ async function request(path, options = {}) {
 
 export const api = {
   sku: {
-    list: (q = '') => request(`/sku${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+    list: (path = '') => request(path || '/sku'),
     get: (id) => request(`/sku/${id}`),
     create: (payload) => request('/sku', { method: 'POST', body: JSON.stringify(payload) }),
     update: (id, payload) =>
